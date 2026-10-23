@@ -1,0 +1,61 @@
+@startuml
+title Device State Machine (digital_twin/devices.py)
+
+skinparam backgroundColor #0D1117
+skinparam state {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+skinparam arrow {
+    Color #60A5FA
+    FontColor #94A3B8
+}
+
+[*] --> NORMAL : Device created
+
+state "NORMAL\nrisk: 0.00-0.30" as NORMAL #22C55E
+state "WARNING\nrisk: 0.30-0.60" as WARNING #EAB308
+state "SUSPICIOUS\nrisk: 0.60-0.80" as SUSPICIOUS #F97316
+state "UNDER_ATTACK\nrisk: 0.80-1.00" as UNDER_ATTACK #EF4444
+state "OFFLINE" as OFFLINE #64748B
+
+' Manual transitions (validated via STATE_TRANSITIONS table)
+NORMAL --> WARNING : transition_to()\nmanual escalation
+NORMAL --> SUSPICIOUS : transition_to()\nmanual escalation
+NORMAL --> OFFLINE : transition_to()\ndevice down
+
+WARNING --> NORMAL : transition_to()\nrecovery
+WARNING --> SUSPICIOUS : transition_to()\nescalation
+WARNING --> UNDER_ATTACK : transition_to()\nescalation
+WARNING --> OFFLINE : transition_to()\ndevice down
+
+SUSPICIOUS --> NORMAL : transition_to()\nrecovery
+SUSPICIOUS --> WARNING : transition_to()\nde-escalation
+SUSPICIOUS --> UNDER_ATTACK : transition_to()\nescalation
+SUSPICIOUS --> OFFLINE : transition_to()\ndevice down
+
+UNDER_ATTACK --> SUSPICIOUS : transition_to()\nde-escalation
+UNDER_ATTACK --> WARNING : transition_to()\nde-escalation
+UNDER_ATTACK --> NORMAL : transition_to()\nrecovery
+UNDER_ATTACK --> OFFLINE : transition_to()\ndevice down
+
+OFFLINE --> NORMAL : transition_to()\ndevice restored
+
+' ML-driven transitions (bypass validation table)
+note right of NORMAL
+    <b>ML-Driven Transitions</b>
+    (via DigitalTwinStateManager.update_risk_score()
+    or record_anomaly() with auto_transition=True)
+    
+    Risk score directly maps to status:
+    • 0.00-0.30 → NORMAL
+    • 0.30-0.60 → WARNING  
+    • 0.60-0.80 → SUSPICIOUS
+    • 0.80-1.00 → UNDER_ATTACK
+    
+    ML can jump ANY state → ANY state
+    based on risk_score from model prediction.
+end note
+
+@enduml

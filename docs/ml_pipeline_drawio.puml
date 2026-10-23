@@ -1,0 +1,193 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+
+title ML Pipeline - AI-Driven Digital Twin Framework
+
+' Raw Data
+[CICIDS2017 CSV\n692,703 rows x 79 cols\nWednesday-workingHours] as RawCSV
+
+' Preprocessing (ml/preprocess.py)
+[1. Column Cleanup\nStrip whitespace] as Step1
+[2. Label Detection\nAuto-detect Label column] as Step2
+[3. Drop Metadata\nIP, Port, Timestamp, Protocol] as Step3
+[4. Remove Duplicates\n107,477 rows removed] as Step4
+[5. NaN/Inf Handling\n235 rows dropped] as Step5
+[6. Label Normalization\nBENIGN->0, ATTACK->1] as Step6
+[7. Feature Selection\n77 numeric features] as Step7
+[8. Train/Test Split\n80/20 stratified, seed=42] as Step8
+[9. StandardScaler\nFit on train only] as Step9
+
+' Processed Data
+database "X_train.csv\n467,992 x 77" as XTrain
+database "X_test.csv\n116,999 x 77" as XTest
+database "y_train.csv\ny_test.csv" as YData
+database "scaler.joblib" as Scaler
+database "feature_names.joblib" as Features
+
+' Model Training (ml/train.py)
+[Random Forest\nSupervised Classifier] as RF
+[Isolation Forest\nUnsupervised Anomaly Detector] as IF
+
+' Trained Models
+database "random_forest.joblib\n14 MB" as RFModel
+database "isolation_forest.joblib\n844 KB" as IFModel
+database "training_results.json" as TrainResults
+
+' Model Evaluation (ml/evaluate.py)
+[Load Models + Test Data] as EvalLoad
+[Compute Metrics\nAccuracy, Precision, Recall\nF1, ROC-AUC, FPR] as EvalMetrics
+[Confusion Matrix\nTN, FP, FN, TP] as EvalCM
+[ROC Curve\n(if predict_proba)] as EvalROC
+
+' Evaluation Outputs
+database "evaluation_results.json" as EvalResults
+database "confusion_matrix.png" as CMPng
+database "roc_curve.png" as ROCPng
+
+' Prediction & Integration (ml/predict.py)
+[FlowPredictor\nLoads model, scaler, features] as FPPredictor
+[predict_flow()\nSingle flow dict] as FPSingle
+[predict_batch()\nDataFrame + DT integration] as FPBatch
+[pre_scaled=True\nFor preprocessed test data] as FPScaled
+
+' Digital Twin Integration
+[IP_TO_DEVICE\nO(1) lookup dict] as IPLookup
+[DigitalTwinStateManager\nrecord_anomaly()] as DTState
+[Device State Transition\nNORMAL->SUSPICIOUS->UNDER_ATTACK] as DTTransition
+[Event History\nTimestamp, risk, prediction] as DTEvents
+
+' Connections
+RawCSV --> Step1
+Step1 --> Step2
+Step2 --> Step3
+Step3 --> Step4
+Step4 --> Step5
+Step5 --> Step6
+Step6 --> Step7
+Step7 --> Step8
+Step8 --> Step9
+
+Step9 --> XTrain
+Step9 --> XTest
+Step9 --> YData
+Step9 --> Scaler
+Step9 --> Features
+
+XTrain --> RF
+XTrain --> IF
+YData --> RF
+Scaler --> RF
+Scaler --> IF
+Features --> RF
+Features --> IF
+
+RF --> RFModel
+IF --> IFModel
+RF --> TrainResults
+IF --> TrainResults
+
+RFModel --> EvalLoad
+IFModel --> EvalLoad
+XTest --> EvalLoad
+YData --> EvalLoad
+
+EvalLoad --> EvalMetrics
+EvalLoad --> EvalCM
+EvalLoad --> EvalROC
+
+EvalMetrics --> EvalResults
+EvalCM --> EvalResults
+EvalCM --> CMPng
+EvalROC --> ROCPng
+
+RFModel --> FPPredictor
+Scaler --> FPPredictor
+Features --> FPPredictor
+
+FPPredictor --> FPSingle
+FPPredictor --> FPBatch
+FPBatch --> FPScaled
+
+FPBatch --> IPLookup
+IPLookup --> DTState
+DTState --> DTTransition
+DTState --> DTEvents
+
+' Notes
+note right of RawCSV
+  CICIDS2017 Wednesday file
+  692,703 rows x 79 columns
+  Labels: BENIGN, DoS Hulk, DoS GoldenEye,
+  DoS slowloris, DoS Slowhttptest, Heartbleed
+end note
+
+note right of Step6
+  Binary Label Normalization:
+  BENIGN, Normal, Legitimate, 0, Background -> 0
+  Everything else (DoS Hulk, PortScan, etc.) -> 1
+  Original labels preserved for multi-class extension
+end note
+
+note right of Step8
+  Train/Test Split: 80/20 stratified
+  random_state=42
+  NO LEAKAGE - split BEFORE scaling
+  Train: 467,992 | Test: 116,999
+  Attack ratio (train): 33.12%
+end note
+
+note right of Step9
+  StandardScaler fitted ONLY on training data
+  Transforms both train and test
+  Prevents data leakage
+  Saved as scaler.joblib
+end note
+
+note right of RF
+  RandomForestClassifier
+  n_estimators=100
+  max_depth=None
+  class_weight="balanced"
+  random_state=42
+  n_jobs=-1
+  Test Accuracy: 99.91%
+  F1: 0.9987
+  ROC-AUC: 0.9999
+end note
+
+note right of IF
+  IsolationForest
+  n_estimators=100
+  contamination=0.1
+  random_state=42
+  n_jobs=-1
+  Unsupervised - no labels used
+  Test Accuracy: 64.14%
+  F1: 0.1718
+  Not directly comparable to RF
+end note
+
+note right of FPBatch
+  predict_batch(flows, state_manager, dst_ip_col, pre_scaled)
+  - pre_scaled=True for load_processed() data
+  - Adds: prediction, risk_score, confidence
+  - Updates Digital Twin via record_anomaly()
+  - risk_score = attack_probability (proba[:,1])
+end note
+
+note right of DTTransition
+  Risk-to-Status Mapping:
+  0.00-0.30 -> NORMAL
+  0.30-0.60 -> WARNING
+  0.60-0.80 -> SUSPICIOUS
+  0.80-1.00 -> UNDER_ATTACK
+  
+  ML-driven transitions bypass
+  sequential rules (direct assignment)
+end note
+
+@enduml

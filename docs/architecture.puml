@@ -1,0 +1,596 @@
+@startuml
+!define RECTANGLE class
+
+' ============================================================
+' AI-Driven Digital Twin Framework - Architecture & Pipeline
+' ============================================================
+
+title AI-Driven Digital Twin Framework for Predictive Cyber Defense in Educational Institutions
+
+' ============================================================
+' STYLES
+' ============================================================
+skinparam backgroundColor #0D1117
+skinparam componentStyle rectangle
+skinparam rectangle {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 12
+}
+skinparam package {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 13
+}
+skinparam arrow {
+    Color #60A5FA
+    FontColor #94A3B8
+}
+skinparam note {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #94A3B8
+}
+
+' ============================================================
+' HIGH-LEVEL PIPELINE (Data Flow)
+' ============================================================
+
+package "DATA LAYER" as DataLayer #1E293B {
+    [CICIDS2017 / UNSW-NB15\nCSV Datasets] as RawData
+    [data/raw/] as RawDir
+    [data/processed/\nX_train, X_test, y_train, y_test] as ProcessedDir
+    [models/\nscaler.joblib, feature_names.joblib] as ModelArtifacts
+}
+
+package "PREPROCESSING PIPELINE" as PreprocessLayer #1E293B {
+    [ml/preprocess.py\nPreprocessPipeline] as Preprocess
+    note right of Preprocess
+        1. Column name cleanup
+        2. Label column detection
+        3. Drop metadata (IP, port, timestamp)
+        4. Remove duplicates
+        5. Handle inf/NaN
+        6. Binary label normalization (BENIGN→0, ATTACK→1)
+        7. Numeric feature selection
+        8. Train/test split (80/20, stratified)
+        9. StandardScaler (fit on train only)
+    end note
+}
+
+package "ML LAYER" as MLLayer #1E293B {
+    [ml/train.py\nRandomForestClassifier] as RF
+    [ml/train.py\nIsolationForest] as ISO
+    [ml/evaluate.py\nModelEvaluator] as Eval
+    [models/\nrandom_forest.joblib] as RFModel
+    [models/\nisolation_forest.joblib] as ISOModel
+    [results/\nevaluation_results.json] as EvalResults
+    [results/\n*_confusion_matrix.png] as CMPlots
+    [results/\n*_roc_curve.png] as ROCPlots
+}
+
+package "DIGITAL TWIN LAYER" as DTLayer #1E293B {
+    [digital_twin/devices.py\nDevice Dataclass] as Device
+    [digital_twin/topology.py\nCampusTopology (NetworkX DiGraph)] as Topology
+    [digital_twin/state.py\nDigitalTwinStateManager] as StateMgr
+    [digital_twin/network.py\nVisualization] as Viz
+    [models/topology.png] as TopoPNG
+}
+
+package "ML INTEGRATION" as IntegrationLayer #1E293B {
+    [ml/predict.py\nFlowPredictor] as Predictor
+    [digital_twin/topology.py\nIP_TO_DEVICE mapping] as IPMap
+}
+
+package "DASHBOARD LAYER" as DashboardLayer #1E293B {
+    [dashboard/app.py\nStreamlit App] as Dashboard
+    [Overview Page] as Overview
+    [Network Topology Page] as TopoPage
+    [Device Inventory Page] as DevicePage
+    [Threat Events Page] as ThreatPage
+    [Model Performance Page] as PerfPage
+}
+
+' ============================================================
+' DATA FLOW CONNECTIONS
+' ============================================================
+
+RawData --> RawDir : "placed in"
+RawDir --> Preprocess : "load_raw_dataset()"
+Preprocess --> ProcessedDir : "save_processed()"
+Preprocess --> ModelArtifacts : "save scaler + features"
+ProcessedDir --> RF : "load_processed()"
+ProcessedDir --> ISO : "load_processed()"
+RF --> RFModel : "joblib.dump()"
+ISO --> ISOModel : "joblib.dump()"
+RFModel --> Eval : "_load_model()"
+ISOModel --> Eval : "_load_model()"
+ProcessedDir --> Eval : "load_processed()"
+Eval --> EvalResults : "json.dump()"
+Eval --> CMPlots : "ConfusionMatrixDisplay"
+Eval --> ROCPlots : "roc_curve()"
+
+' ML Integration
+RFModel --> Predictor : "joblib.load()"
+ModelArtifacts --> Predictor : "load scaler + features"
+Predictor --> IPMap : "destination_ip → device_id"
+IPMap --> StateMgr : "record_anomaly()"
+StateMgr --> Topology : "update device status/risk"
+StateMgr --> Dashboard : "get_event_history()\nget_topology_summary()\nget_compromised_devices()"
+
+' Digital Twin
+Device --> Topology : "add_device()"
+Topology --> Viz : "create_campus_topology()"
+Viz --> TopoPNG : "visualize_topology()"
+Topology --> Dashboard : "create_campus_topology()"
+StateMgr --> Dashboard : "get_digital_twin()"
+
+' Dashboard data flow
+Dashboard --> Overview : "status counts, pie chart"
+Dashboard --> TopoPage : "build_topology_figure()"
+Dashboard --> DevicePage : "device table with risk gradient"
+Dashboard --> ThreatPage : "event history with filters"
+Dashboard --> PerfPage : "load_model_results()"
+
+@enduml
+
+' ============================================================
+' NETWORK TOPOLOGY - Device & Connection Diagram
+' ============================================================
+
+@startuml
+!define RECTANGLE class
+
+title Campus Network Topology - Educational Institution Digital Twin (26 Devices, 25 Connections)
+
+skinparam backgroundColor #0D1117
+skinparam componentStyle rectangle
+skinparam rectangle {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 11
+}
+skinparam package {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 12
+}
+skinparam arrow {
+    Color #60A5FA
+    FontColor #94A3B8
+}
+
+' ============================================================
+' EXTERNAL LAYER
+' ============================================================
+package "EXTERNAL" as External #1E293B {
+    [EXT-01\nInternet Gateway\n0.0.0.0/0\nType: External] as EXT01
+}
+
+' ============================================================
+' SECURITY LAYER (DMZ / Management)
+' ============================================================
+package "SECURITY LAYER" as Security #1E293B {
+    [FW-01\nPerimeter Firewall\n10.0.0.1\nType: Security\nVLAN: DMZ] as FW01
+    [IDS-01\nIDS/Monitoring Node\n10.0.0.2\nType: Monitoring\nVLAN: MANAGEMENT] as IDS01
+}
+
+' ============================================================
+' CORE LAYER
+' ============================================================
+package "CORE LAYER" as Core #1E293B {
+    [RTR-01\nCore Router\n192.168.0.1\nType: Router\nVLAN: CORE] as RTR01
+}
+
+' ============================================================
+' SERVER LAYER (Server Room)
+' ============================================================
+package "SERVER LAYER (Server Room)" as ServerLayer #1E293B {
+    [SRV-LMS\nLMS Server\n192.168.10.10\nType: Server\nVLAN: SERVERS] as SRVLMS
+    [SRV-WEB\nWeb Server\n192.168.10.11\nType: Server\nVLAN: DMZ] as SRVWEB
+    [SRV-DB\nDatabase Server\n192.168.10.12\nType: Server\nVLAN: SERVERS] as SRVDB
+    [SRV-AUTH\nAuth Server\n192.168.10.13\nType: Server\nVLAN: SERVERS] as SRVAUTH
+    [SRV-FILE\nFile Server\n192.168.10.14\nType: Server\nVLAN: SERVERS] as SRVFILE
+}
+
+' ============================================================
+' ACADEMIC NETWORK
+' ============================================================
+package "ACADEMIC NETWORK (Academic Block)" as Academic #1E293B {
+    [SW-ACAD\nAcademic Switch\n192.168.20.1\nType: Switch\nVLAN: ACADEMIC] as SWACAD
+    [FAC-PC01\nFaculty PC 01\n192.168.20.101\nType: Endpoint\nVLAN: ACADEMIC] as FACPC01
+    [FAC-PC02\nFaculty PC 02\n192.168.20.102\nType: Endpoint\nVLAN: ACADEMIC] as FACPC02
+    [STU-PC01\nStudent PC 01\n192.168.20.201\nType: Endpoint\nVLAN: ACADEMIC] as STUPC01
+    [CCTV-01\nAcademic CCTV 01\n192.168.20.10\nType: IoT\nVLAN: IOT] as CCTV01
+    [RFID-01\nRFID Attendance\n192.168.20.11\nType: IoT\nVLAN: IOT] as RFID01
+    [AP-ACAD\nAcademic Wi-Fi AP\n192.168.20.50\nType: AccessPoint\nVLAN: ACADEMIC] as APACAD
+}
+
+' ============================================================
+' ADMINISTRATION NETWORK
+' ============================================================
+package "ADMIN NETWORK (Admin Block)" as Admin #1E293B {
+    [SW-ADMIN\nAdmin Switch\n192.168.30.1\nType: Switch\nVLAN: ADMIN] as SWADMIN
+    [ADMIN-PC01\nAdmin PC 01\n192.168.30.101\nType: Endpoint\nVLAN: ADMIN] as ADMINPC01
+    [ADMIN-SRV\nAdmin Server\n192.168.30.10\nType: Server\nVLAN: ADMIN] as ADMINSRV
+    [ACS-01\nAccess Control System\n192.168.30.20\nType: IoT\nVLAN: IOT] as ACS01
+}
+
+' ============================================================
+' HOSTEL NETWORK
+' ============================================================
+package "HOSTEL NETWORK (Hostel Block)" as Hostel #1E293B {
+    [SW-HOSTEL\nHostel Switch\n192.168.40.1\nType: Switch\nVLAN: HOSTEL] as SWHOSTEL
+    [STU-DEV01\nStudent Device 01\n192.168.40.101\nType: Endpoint\nVLAN: HOSTEL] as STUDEV01
+    [STU-DEV02\nStudent Device 02\n192.168.40.102\nType: Endpoint\nVLAN: HOSTEL] as STUDEV02
+    [AP-HOSTEL\nHostel Wi-Fi AP\n192.168.40.50\nType: AccessPoint\nVLAN: HOSTEL] as APHOSTEL
+    [IOT-HOSTEL\nHostel IoT Device\n192.168.40.20\nType: IoT\nVLAN: IOT] as IOTHOSTEL
+    [CCTV-02\nHostel CCTV\n192.168.40.21\nType: IoT\nVLAN: IOT] as CCTV02
+}
+
+' ============================================================
+' CONNECTIONS (Bidirectional - shown as single arrows for clarity)
+' ============================================================
+
+' External → Security
+EXT01 --> FW01 : "1Gbps Ethernet\nperimeter"
+
+' Security internal
+FW01 --> IDS01 : "1Gbps Ethernet\nspan/mirror"
+FW01 --> RTR01 : "10Gbps Ethernet\ncore"
+
+' Core → Servers
+RTR01 --> SRVLMS : "1Gbps Ethernet\nserver"
+RTR01 --> SRVWEB : "1Gbps Ethernet\nserver"
+RTR01 --> SRVDB : "1Gbps Ethernet\nserver"
+RTR01 --> SRVAUTH : "1Gbps Ethernet\nserver"
+RTR01 --> SRVFILE : "1Gbps Ethernet\nserver"
+
+' Core → Zone Switches
+RTR01 --> SWACAD : "10Gbps Ethernet\nacademic"
+RTR01 --> SWADMIN : "10Gbps Ethernet\nadmin"
+RTR01 --> SWHOSTEL : "10Gbps Ethernet\nhostel"
+
+' Academic Zone
+SWACAD --> FACPC01 : "100Mbps Ethernet\nacademic"
+SWACAD --> FACPC02 : "100Mbps Ethernet\nacademic"
+SWACAD --> STUPC01 : "100Mbps Ethernet\nacademic"
+SWACAD --> CCTV01 : "100Mbps Ethernet\niot"
+SWACAD --> RFID01 : "100Mbps Ethernet\niot"
+SWACAD --> APACAD : "1Gbps Ethernet\nacademic"
+
+' Admin Zone
+SWADMIN --> ADMINPC01 : "100Mbps Ethernet\nadmin"
+SWADMIN --> ADMINSRV : "1Gbps Ethernet\nadmin"
+SWADMIN --> ACS01 : "100Mbps Ethernet\niot"
+
+' Hostel Zone
+SWHOSTEL --> STUDEV01 : "100Mbps Ethernet\nhostel"
+SWHOSTEL --> STUDEV02 : "100Mbps Ethernet\nhostel"
+SWHOSTEL --> APHOSTEL : "1Gbps Ethernet\nhostel"
+SWHOSTEL --> IOTHOSTEL : "100Mbps Ethernet\niot"
+SWHOSTEL --> CCTV02 : "100Mbps Ethernet\niot"
+
+' ============================================================
+' LEGEND
+' ============================================================
+legend right
+| <b>Device Types</b> |
+| <color:#E74C3C>■</color> External |
+| <color:#8E44AD>■</color> Security (Firewall) |
+| <color:#D35400>■</color> Monitoring (IDS) |
+| <color:#2C3E50>■</color> Router |
+| <color:#2980B9>■</color> Switch |
+| <color:#27AE60>■</color> Server |
+| <color:#F39C12>■</color> IoT |
+| <color:#BDC3C7>■</color> Endpoint |
+| <color:#1ABC9C>■</color> Access Point |
+|
+| <b>Status Colors (Runtime)</b> |
+| <color:#22C55E>■</color> NORMAL |
+| <color:#EAB308>■</color> WARNING |
+| <color:#F97316>■</color> SUSPICIOUS |
+| <color:#EF4444>■</color> UNDER_ATTACK |
+| <color:#64748B>■</color> OFFLINE |
+endlegend
+
+@enduml
+
+' ============================================================
+' STATE MACHINE - Device Status Transitions
+' ============================================================
+
+@startuml
+title Device State Machine (digital_twin/devices.py)
+
+skinparam backgroundColor #0D1117
+skinparam state {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+skinparam arrow {
+    Color #60A5FA
+    FontColor #94A3B8
+}
+
+[*] --> NORMAL : Device created
+
+state "NORMAL\nrisk: 0.00-0.30" as NORMAL #22C55E
+state "WARNING\nrisk: 0.30-0.60" as WARNING #EAB308
+state "SUSPICIOUS\nrisk: 0.60-0.80" as SUSPICIOUS #F97316
+state "UNDER_ATTACK\nrisk: 0.80-1.00" as UNDER_ATTACK #EF4444
+state "OFFLINE" as OFFLINE #64748B
+
+' Manual transitions (validated via STATE_TRANSITIONS table)
+NORMAL --> WARNING : transition_to()\nmanual escalation
+NORMAL --> SUSPICIOUS : transition_to()\nmanual escalation
+NORMAL --> OFFLINE : transition_to()\ndevice down
+
+WARNING --> NORMAL : transition_to()\nrecovery
+WARNING --> SUSPICIOUS : transition_to()\nescalation
+WARNING --> UNDER_ATTACK : transition_to()\nescalation
+WARNING --> OFFLINE : transition_to()\ndevice down
+
+SUSPICIOUS --> NORMAL : transition_to()\nrecovery
+SUSPICIOUS --> WARNING : transition_to()\nde-escalation
+SUSPICIOUS --> UNDER_ATTACK : transition_to()\nescalation
+SUSPICIOUS --> OFFLINE : transition_to()\ndevice down
+
+UNDER_ATTACK --> SUSPICIOUS : transition_to()\nde-escalation
+UNDER_ATTACK --> WARNING : transition_to()\nde-escalation
+UNDER_ATTACK --> NORMAL : transition_to()\nrecovery
+UNDER_ATTACK --> OFFLINE : transition_to()\ndevice down
+
+OFFLINE --> NORMAL : transition_to()\ndevice restored
+
+' ML-driven transitions (bypass validation table)
+note right of NORMAL
+    <b>ML-Driven Transitions</b>
+    (via DigitalTwinStateManager.update_risk_score()
+    or record_anomaly() with auto_transition=True)
+    
+    Risk score directly maps to status:
+    • 0.00-0.30 → NORMAL
+    • 0.30-0.60 → WARNING  
+    • 0.60-0.80 → SUSPICIOUS
+    • 0.80-1.00 → UNDER_ATTACK
+    
+    ML can jump ANY state → ANY state
+    based on risk_score from model prediction.
+end note
+
+@enduml
+
+' ============================================================
+' SEQUENCE DIAGRAM - End-to-End Pipeline
+' ============================================================
+
+@startuml
+title End-to-End Pipeline Sequence
+
+skinparam backgroundColor #0D1117
+skinparam sequence {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    ActorBackgroundColor #1E293B
+    ActorBorderColor #334155
+    ActorFontColor #F8FAFC
+    LifeLineBackgroundColor #334155
+    LifeLineBorderColor #60A5FA
+}
+skinparam note {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #94A3B8
+}
+
+actor User
+participant "data/raw/\nDataset.csv" as RawData
+participant "ml/preprocess.py\nPreprocessPipeline" as Preprocess
+participant "data/processed/\nTrain/Test splits" as Processed
+participant "ml/train.py\nRandomForest + IsolationForest" as Train
+participant "models/\n*.joblib" as Models
+participant "ml/evaluate.py\nModelEvaluator" as Evaluate
+participant "results/\nmetrics + plots" as Results
+participant "ml/predict.py\nFlowPredictor" as Predictor
+participant "digital_twin/topology.py\nIP_TO_DEVICE" as IPMap
+participant "digital_twin/state.py\nDigitalTwinStateManager" as StateMgr
+participant "digital_twin/topology.py\nCampusTopology" as Topology
+participant "dashboard/app.py\nStreamlit Dashboard" as Dashboard
+
+== Phase 1: Data Preparation ==
+User -> RawData: Place CICIDS2017/UNSW-NB15 CSV
+User -> Preprocess: python -m ml.preprocess
+Preprocess -> RawData: load_raw_dataset()
+Preprocess -> Preprocess: Clean columns, normalize labels,\nremove inf/NaN, drop metadata,\nselect numeric features
+Preprocess -> Preprocess: Train/test split (stratified)
+Preprocess -> Preprocess: Fit StandardScaler on train only
+Preprocess -> Processed: Save X_train, X_test, y_train, y_test
+Preprocess -> Models: Save scaler.joblib, feature_names.joblib
+
+== Phase 2: Model Training ==
+User -> Train: python -m ml.train
+Train -> Processed: load_processed()
+Train -> Train: Train RandomForest (supervised)
+Train -> Train: Train IsolationForest (unsupervised)
+Train -> Models: Save random_forest.joblib
+Train -> Models: Save isolation_forest.joblib
+Train -> Models: Save training_results.json
+
+== Phase 3: Model Evaluation ==
+User -> Evaluate: python -m ml.evaluate
+Evaluate -> Models: Load models
+Evaluate -> Processed: Load test set
+Evaluate -> Evaluate: Compute metrics (Acc, Prec, Rec, F1, AUC, FPR)
+Evaluate -> Evaluate: Generate confusion matrices
+Evaluate -> Evaluate: Generate ROC curves (RF only)
+Evaluate -> Results: Save evaluation_results.json
+Evaluate -> Results: Save *_confusion_matrix.png
+Evaluate -> Results: Save *_roc_curve.png
+
+== Phase 4: Digital Twin Initialization ==
+User -> Topology: python -m digital_twin.network
+Topology -> Topology: create_campus_topology()\n26 devices, 25 connections
+Topology -> Topology: visualize_topology() → models/topology.png
+Topology -> StateMgr: DigitalTwinStateManager(topo)
+StateMgr -> StateMgr: Inject demo events (optional)
+
+== Phase 5: Real-time Inference & Monitoring ==
+loop Continuous Monitoring
+    User -> Predictor: FlowPredictor(model, scaler, features)
+    Predictor -> Models: Load RF model + scaler + features
+    
+    alt Batch prediction from dataset
+        Predictor -> Predictor: predict_batch(flows_df)
+        Predictor -> IPMap: Map destination_ip → device_id
+        Predictor -> StateMgr: record_anomaly(device_id, risk, pred, conf)
+        StateMgr -> Topology: Update device status + risk_score
+        StateMgr -> StateMgr: Append to event_history
+    else Single flow prediction
+        Predictor -> Predictor: predict_flow(flow_dict)
+        Predictor --> User: {prediction, confidence, risk_score}
+    end
+    
+    Dashboard -> StateMgr: get_topology_summary()
+    Dashboard -> StateMgr: get_event_history()
+    Dashboard -> StateMgr: get_compromised_devices()
+    Dashboard -> Topology: create_campus_topology()
+    Dashboard -> Dashboard: Render pages (Overview, Topology,\nDevice Inventory, Threats, Performance)
+    Dashboard --> User: http://localhost:8501
+end
+
+@enduml
+
+' ============================================================
+' COMPONENT DIAGRAM - Code Structure
+' ============================================================
+
+@startuml
+title Component Diagram - Code Structure
+
+skinparam backgroundColor #0D1117
+skinparam componentStyle rectangle
+skinparam component {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+skinparam package {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+skinparam interface {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+
+package "digital_twin" {
+    [devices.py\nDevice Dataclass] as Devices
+    [topology.py\nCampusTopology] as Topology
+    [state.py\nDigitalTwinStateManager] as State
+    [network.py\nVisualization + CLI] as Network
+    [__init__.py] as DTInit
+}
+
+package "ml" {
+    [preprocess.py\nPreprocessPipeline] as Preprocess
+    [train.py\nModelTraining] as Train
+    [evaluate.py\nModelEvaluation] as Evaluate
+    [predict.py\nFlowPredictor] as Predict
+    [__init__.py] as MLInit
+}
+
+package "dashboard" {
+    [app.py\nStreamlitApp] as App
+    [__init__.py] as DashInit
+}
+
+package "tests" {
+    [test_devices.py] as TestDev
+    [test_topology.py] as TestTopo
+    [test_state.py] as TestState
+    [test_preprocessing.py] as TestPrep
+    [test_ml.py] as TestML
+    [test_network.py] as TestNet
+}
+
+package "data" {
+    [raw/] as RawData
+    [processed/] as ProcData
+}
+
+package "models" {
+    [*.joblib] as ModelFiles
+    [training_results.json] as TrainResults
+}
+
+package "results" {
+    [evaluation_results.json] as EvalResults
+    [*_confusion_matrix.png] as CMFiles
+    [*_roc_curve.png] as ROCFiles
+}
+
+package "notebooks" {
+    [01_dataset_exploration.ipynb] as NB1
+    [02_model_training.ipynb] as NB2
+    [03_evaluation.ipynb] as NB3
+}
+
+package "docs" {
+    [architecture.md] as DocArch
+    [methodology.md] as DocMeth
+    [implementation.md] as DocImpl
+    [dataset.md] as DocData
+    [experiments.md] as DocExp
+    [architecture.puml] as DocPUML
+}
+
+' Dependencies
+Network --> Topology : uses
+Network --> State : uses
+Network --> Devices : uses
+
+Topology --> Devices : creates Device objects
+State --> Topology : wraps CampusTopology
+
+Preprocess --> RawData : reads from
+Preprocess --> ProcData : writes to
+Preprocess --> ModelFiles : writes scaler + features
+
+Train --> ProcData : reads from
+Train --> ModelFiles : writes models + training_results
+
+Evaluate --> ProcData : reads test set
+Evaluate --> ModelFiles : reads models
+Evaluate --> Results : writes metrics + plots
+
+Predict --> ModelFiles : reads RF model + scaler + features
+Predict --> Topology : uses IP_TO_DEVICE mapping
+Predict --> State : calls record_anomaly()
+
+App --> Topology : creates campus topology
+App --> State : gets DigitalTwinStateManager
+App --> Results : loads evaluation results
+
+TestDev --> Devices : tests
+TestTopo --> Topology : tests
+TestState --> State : tests
+TestPrep --> Preprocess : tests
+TestML --> Train : tests
+TestML --> Evaluate : tests
+TestML --> Predict : tests
+TestNet --> Network : tests
+
+NB1 --> RawData : explores
+NB2 --> Train : demonstrates
+NB3 --> Evaluate : demonstrates
+
+@enduml

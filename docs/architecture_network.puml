@@ -1,0 +1,163 @@
+@startuml
+!define RECTANGLE class
+
+' ============================================================
+' NETWORK TOPOLOGY - Device & Connection Diagram
+' ============================================================
+
+title Campus Network Topology - Educational Institution Digital Twin (26 Devices, 25 Connections)
+
+skinparam backgroundColor #0D1117
+skinparam componentStyle rectangle
+skinparam rectangle {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 11
+}
+skinparam package {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 12
+}
+skinparam arrow {
+    Color #60A5FA
+    FontColor #94A3B8
+}
+
+' ============================================================
+' EXTERNAL LAYER
+' ============================================================
+package "EXTERNAL" as External #1E293B {
+    [EXT-01\nInternet Gateway\n0.0.0.0/0\nType: External] as EXT01
+}
+
+' ============================================================
+' SECURITY LAYER (DMZ / Management)
+' ============================================================
+package "SECURITY LAYER" as Security #1E293B {
+    [FW-01\nPerimeter Firewall\n10.0.0.1\nType: Security\nVLAN: DMZ] as FW01
+    [IDS-01\nIDS/Monitoring Node\n10.0.0.2\nType: Monitoring\nVLAN: MANAGEMENT] as IDS01
+}
+
+' ============================================================
+' CORE LAYER
+' ============================================================
+package "CORE LAYER" as Core #1E293B {
+    [RTR-01\nCore Router\n192.168.0.1\nType: Router\nVLAN: CORE] as RTR01
+}
+
+' ============================================================
+' SERVER LAYER (Server Room)
+' ============================================================
+package "SERVER LAYER (Server Room)" as ServerLayer #1E293B {
+    [SRV-LMS\nLMS Server\n192.168.10.10\nType: Server\nVLAN: SERVERS] as SRVLMS
+    [SRV-WEB\nWeb Server\n192.168.10.11\nType: Server\nVLAN: DMZ] as SRVWEB
+    [SRV-DB\nDatabase Server\n192.168.10.12\nType: Server\nVLAN: SERVERS] as SRVDB
+    [SRV-AUTH\nAuth Server\n192.168.10.13\nType: Server\nVLAN: SERVERS] as SRVAUTH
+    [SRV-FILE\nFile Server\n192.168.10.14\nType: Server\nVLAN: SERVERS] as SRVFILE
+}
+
+' ============================================================
+' ACADEMIC NETWORK
+' ============================================================
+package "ACADEMIC NETWORK (Academic Block)" as Academic #1E293B {
+    [SW-ACAD\nAcademic Switch\n192.168.20.1\nType: Switch\nVLAN: ACADEMIC] as SWACAD
+    [FAC-PC01\nFaculty PC 01\n192.168.20.101\nType: Endpoint\nVLAN: ACADEMIC] as FACPC01
+    [FAC-PC02\nFaculty PC 02\n192.168.20.102\nType: Endpoint\nVLAN: ACADEMIC] as FACPC02
+    [STU-PC01\nStudent PC 01\n192.168.20.201\nType: Endpoint\nVLAN: ACADEMIC] as STUPC01
+    [CCTV-01\nAcademic CCTV 01\n192.168.20.10\nType: IoT\nVLAN: IOT] as CCTV01
+    [RFID-01\nRFID Attendance\n192.168.20.11\nType: IoT\nVLAN: IOT] as RFID01
+    [AP-ACAD\nAcademic Wi-Fi AP\n192.168.20.50\nType: AccessPoint\nVLAN: ACADEMIC] as APACAD
+}
+
+' ============================================================
+' ADMINISTRATION NETWORK
+' ============================================================
+package "ADMIN NETWORK (Admin Block)" as Admin #1E293B {
+    [SW-ADMIN\nAdmin Switch\n192.168.30.1\nType: Switch\nVLAN: ADMIN] as SWADMIN
+    [ADMIN-PC01\nAdmin PC 01\n192.168.30.101\nType: Endpoint\nVLAN: ADMIN] as ADMINPC01
+    [ADMIN-SRV\nAdmin Server\n192.168.30.10\nType: Server\nVLAN: ADMIN] as ADMINSRV
+    [ACS-01\nAccess Control System\n192.168.30.20\nType: IoT\nVLAN: IOT] as ACS01
+}
+
+' ============================================================
+' HOSTEL NETWORK
+' ============================================================
+package "HOSTEL NETWORK (Hostel Block)" as Hostel #1E293B {
+    [SW-HOSTEL\nHostel Switch\n192.168.40.1\nType: Switch\nVLAN: HOSTEL] as SWHOSTEL
+    [STU-DEV01\nStudent Device 01\n192.168.40.101\nType: Endpoint\nVLAN: HOSTEL] as STUDEV01
+    [STU-DEV02\nStudent Device 02\n192.168.40.102\nType: Endpoint\nVLAN: HOSTEL] as STUDEV02
+    [AP-HOSTEL\nHostel Wi-Fi AP\n192.168.40.50\nType: AccessPoint\nVLAN: HOSTEL] as APHOSTEL
+    [IOT-HOSTEL\nHostel IoT Device\n192.168.40.20\nType: IoT\nVLAN: IOT] as IOTHOSTEL
+    [CCTV-02\nHostel CCTV\n192.168.40.21\nType: IoT\nVLAN: IOT] as CCTV02
+}
+
+' ============================================================
+' CONNECTIONS (Bidirectional - shown as single arrows for clarity)
+' ============================================================
+
+' External → Security
+EXT01 --> FW01 : "1Gbps Ethernet\nperimeter"
+
+' Security internal
+FW01 --> IDS01 : "1Gbps Ethernet\nspan/mirror"
+FW01 --> RTR01 : "10Gbps Ethernet\ncore"
+
+' Core → Servers
+RTR01 --> SRVLMS : "1Gbps Ethernet\nserver"
+RTR01 --> SRVWEB : "1Gbps Ethernet\nserver"
+RTR01 --> SRVDB : "1Gbps Ethernet\nserver"
+RTR01 --> SRVAUTH : "1Gbps Ethernet\nserver"
+RTR01 --> SRVFILE : "1Gbps Ethernet\nserver"
+
+' Core → Zone Switches
+RTR01 --> SWACAD : "10Gbps Ethernet\nacademic"
+RTR01 --> SWADMIN : "10Gbps Ethernet\nadmin"
+RTR01 --> SWHOSTEL : "10Gbps Ethernet\nhostel"
+
+' Academic Zone
+SWACAD --> FACPC01 : "100Mbps Ethernet\nacademic"
+SWACAD --> FACPC02 : "100Mbps Ethernet\nacademic"
+SWACAD --> STUPC01 : "100Mbps Ethernet\nacademic"
+SWACAD --> CCTV01 : "100Mbps Ethernet\niot"
+SWACAD --> RFID01 : "100Mbps Ethernet\niot"
+SWACAD --> APACAD : "1Gbps Ethernet\nacademic"
+
+' Admin Zone
+SWADMIN --> ADMINPC01 : "100Mbps Ethernet\nadmin"
+SWADMIN --> ADMINSRV : "1Gbps Ethernet\nadmin"
+SWADMIN --> ACS01 : "100Mbps Ethernet\niot"
+
+' Hostel Zone
+SWHOSTEL --> STUDEV01 : "100Mbps Ethernet\nhostel"
+SWHOSTEL --> STUDEV02 : "100Mbps Ethernet\nhostel"
+SWHOSTEL --> APHOSTEL : "1Gbps Ethernet\nhostel"
+SWHOSTEL --> IOTHOSTEL : "100Mbps Ethernet\niot"
+SWHOSTEL --> CCTV02 : "100Mbps Ethernet\niot"
+
+' ============================================================
+' LEGEND
+' ============================================================
+legend right
+| <b>Device Types</b> |
+| <color:#E74C3C>■</color> External |
+| <color:#8E44AD>■</color> Security (Firewall) |
+| <color:#D35400>■</color> Monitoring (IDS) |
+| <color:#2C3E50>■</color> Router |
+| <color:#2980B9>■</color> Switch |
+| <color:#27AE60>■</color> Server |
+| <color:#F39C12>■</color> IoT |
+| <color:#BDC3C7>■</color> Endpoint |
+| <color:#1ABC9C>■</color> Access Point |
+|
+| <b>Status Colors (Runtime)</b> |
+| <color:#22C55E>■</color> NORMAL |
+| <color:#EAB308>■</color> WARNING |
+| <color:#F97316>■</color> SUSPICIOUS |
+| <color:#EF4444>■</color> UNDER_ATTACK |
+| <color:#64748B>■</color> OFFLINE |
+endlegend
+
+@enduml

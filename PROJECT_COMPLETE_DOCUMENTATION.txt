@@ -1,0 +1,797 @@
+# AI-Driven Digital Twin Framework for Predictive Cyber Defense in Educational Institutions
+# COMPLETE PROJECT DOCUMENTATION - EVERY DETAIL
+
+================================================================================
+PROJECT OVERVIEW
+================================================================================
+
+Project Name: AI-Driven Digital Twin Framework for Predictive Cyber Defense in Educational Institutions
+Type: B.Tech CSE (IoT) Minor Project
+Institution: Amity School of Engineering & Technology
+Team Members:
+  - Abhishek Yadav (Lead Developer)
+  - Tanmay Kumar (ML & Data Pipeline)
+  - Atharva Chaprana (Dashboard & Documentation)
+Project Guide: Mr. Paurush Bhulania
+
+Repository: https://github.com/abhi180105/digitaltwin-mp
+Local Path: /home/abhishek/digitaltwin-mp
+
+================================================================================
+PROBLEM STATEMENT
+================================================================================
+
+Educational institutions operate large, heterogeneous networks with IoT devices,
+student endpoints, administrative servers, and academic infrastructure. These
+networks face growing threats including ransomware, DDoS attacks, and unauthorized
+access — but most institutions lack real-time security monitoring. A Digital Twin
+framework allows threat simulation and anomaly detection without risking real
+infrastructure.
+
+================================================================================
+OBJECTIVES
+================================================================================
+
+1. Build a representative educational campus network Digital Twin
+2. Ingest and preprocess public cybersecurity datasets (CICIDS2017 / UNSW-NB15)
+3. Train ML models for binary anomaly/intrusion detection
+4. Map ML predictions to Digital Twin device states
+5. Provide a live monitoring dashboard
+6. Establish a foundation extensible for future XAI and predictive forecasting
+
+================================================================================
+TECHNOLOGY STACK
+================================================================================
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| Language | Python | 3.11+ |
+| Digital Twin / Graph | NetworkX | 3.3+ |
+| Data Processing | Pandas, NumPy | 2.0+, 1.26+ |
+| Machine Learning | scikit-learn | 1.4+ |
+| Visualization | Matplotlib, Plotly | 3.8+, 5.20+ |
+| Dashboard | Streamlit | 1.35+ |
+| Model Persistence | Joblib | 1.4+ |
+| Testing | Pytest | 8.0+ |
+| Development | VS Code, Git, GitHub | - |
+
+Virtual Environment: denv (Python 3.14.6)
+Package Manager: pip 26.1.2
+
+================================================================================
+REPOSITORY STRUCTURE
+================================================================================
+
+digitaltwin-mp/
+├── data/
+│   ├── raw/                    # Place CSV datasets here (8 CICIDS2017 files present)
+│   │   ├── Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv (77 MB)
+│   │   ├── Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv (77 MB)
+│   │   ├── Friday-WorkingHours-Morning.pcap_ISCX.csv (58 MB)
+│   │   ├── Monday-WorkingHours.pcap_ISCX.csv (177 MB)
+│   │   ├── Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv (83 MB)
+│   │   ├── Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv (52 MB)
+│   │   ├── Tuesday-WorkingHours.pcap_ISCX.csv (135 MB)
+│   │   ├── Wednesday-workingHours.pcap_ISCX.csv (225 MB)
+│   │   └── .gitkeep
+│   └── processed/              # Generated after preprocessing
+│       ├── X_train.csv
+│       ├── X_test.csv
+│       ├── y_train.csv
+│       ├── y_test.csv
+│       └── .gitkeep
+├── digital_twin/
+│   ├── __init__.py
+│   ├── devices.py              # Device dataclass + state machine
+│   ├── topology.py             # Campus network (26 devices, 25 connections)
+│   ├── network.py              # Entry point + visualization
+│   ├── state.py                # State manager + event history
+│   └── demo.py                 # Controlled cyberattack simulation CLI
+├── ml/
+│   ├── __init__.py
+│   ├── preprocess.py           # Full preprocessing pipeline
+│   ├── train.py                # Random Forest + Isolation Forest
+│   ├── predict.py              # FlowPredictor + Digital Twin integration
+│   └── evaluate.py             # Metrics + confusion matrix + ROC
+├── dashboard/
+│   └── app.py                  # Streamlit monitoring dashboard (6 pages)
+├── models/                     # Saved models (gitignored)
+│   ├── random_forest.joblib (14 MB)
+│   ├── isolation_forest.joblib (844 KB)
+│   ├── scaler.joblib (4 KB)
+│   ├── feature_names.joblib (1 KB)
+│   ├── training_results.json
+│   └── topology.png (267 KB)
+├── results/                    # Evaluation outputs (gitignored)
+│   ├── evaluation_results.json
+│   ├── Random_Forest_confusion_matrix.png
+│   ├── Random_Forest_roc_curve.png
+│   └── Isolation_Forest_(unsupervised)_confusion_matrix.png
+├── notebooks/                  # Jupyter exploration notebooks
+│   ├── 01_dataset_exploration.ipynb
+│   ├── 02_model_training.ipynb
+│   └── 03_evaluation.ipynb
+├── tests/                      # Pytest test suite (74 tests)
+│   ├── __init__.py
+│   ├── test_devices.py (15 tests)
+│   ├── test_ml.py (13 tests)
+│   ├── test_network.py (10 tests)
+│   ├── test_preprocessing.py (14 tests)
+│   ├── test_state.py (11 tests)
+│   └── test_topology.py (14 tests)
+├── docs/                       # Architecture & methodology docs
+│   ├── architecture.md
+│   ├── architecture.puml
+│   ├── architecture_component.puml
+│   ├── architecture_network.puml
+│   ├── architecture_sequence.puml
+│   ├── architecture_state.puml
+│   ├── architecture_pipeline.puml
+│   ├── dataset.md
+│   ├── experiments.md
+│   ├── implementation.md
+│   └── methodology.md
+├── presentation/               # Slides & reports
+│   └── .gitkeep
+├── requirements.txt
+├── pyproject.toml
+├── README.md
+└── .gitignore
+
+================================================================================
+DATA FLOW PIPELINE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        COMPLETE DATA FLOW PIPELINE                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+STEP 1: DATASET INGESTION
+─────────────────────────
+Input: CICIDS2017 CSV files in data/raw/
+  - 8 files covering Monday-Friday with different attack types
+  - Auto-detection: first CSV alphabetically (Friday-WorkingHours-Afternoon-DDos)
+  - Manual override: python -m ml.preprocess --filepath <path>
+
+STEP 2: PREPROCESSING (ml/preprocess.py)
+────────────────────────────────────────
+Input: Raw CSV (692,703 rows × 79 columns for Wednesday file)
+Process:
+  1. Column name cleanup (strip whitespace)
+  2. Label column detection (auto-detects "Label", "label", "Class", etc.)
+  3. Drop metadata columns (IP, port, timestamp, protocol - 1 column dropped)
+  4. Remove duplicates (107,477 removed)
+  5. Handle NaN/Inf values (235 rows dropped)
+  6. Binary label normalization:
+     - BENIGN, Normal, Legitimate, 0, Background → 0 (BENIGN)
+     - Everything else (DoS Hulk, PortScan, etc.) → 1 (ATTACK)
+  7. Feature selection: 77 numeric features retained
+  8. Train/test split: 80/20 stratified, random_state=42 (NO LEAKAGE)
+  9. StandardScaler fitted ONLY on training data
+Output:
+  - data/processed/X_train.csv (467,992 × 77)
+  - data/processed/X_test.csv (116,999 × 77)
+  - data/processed/y_train.csv, y_test.csv
+  - models/scaler.joblib
+  - models/feature_names.joblib
+
+STEP 3: MODEL TRAINING (ml/train.py)
+────────────────────────────────────
+Input: Processed train/test splits
+Models:
+  1. Random Forest (Supervised - PRIMARY MVP CLASSIFIER)
+     - n_estimators=100, max_depth=None, class_weight="balanced"
+     - random_state=42, n_jobs=-1
+  2. Isolation Forest (Unsupervised - BASELINE)
+     - n_estimators=100, contamination=0.1, random_state=42, n_jobs=-1
+Output:
+  - models/random_forest.joblib (14 MB)
+  - models/isolation_forest.joblib (844 KB)
+  - models/training_results.json
+
+STEP 4: MODEL EVALUATION (ml/evaluate.py)
+─────────────────────────────────────────
+Input: Trained models + test data
+Metrics Computed:
+  - Accuracy, Precision, Recall, F1-Score, ROC-AUC, False Positive Rate
+  - Confusion Matrix (TN, FP, FN, TP)
+  - Classification Report
+  - ROC Curve (for models with predict_proba)
+Output:
+  - results/evaluation_results.json
+  - results/*_confusion_matrix.png
+  - results/*_roc_curve.png
+
+STEP 5: PREDICTION & DIGITAL TWIN INTEGRATION (ml/predict.py)
+──────────────────────────────────────────────────────────────
+Input: Trained Random Forest + test data + Digital Twin
+Process:
+  1. FlowPredictor loads model, scaler, feature names
+  2. predict_batch() with pre_scaled=True (test data already scaled)
+  3. For each flow: predict → attack_probability → risk_score
+  4. Deterministic demo IP mapping (row_index % 17 devices)
+  4. IP_TO_DEVICE lookup (O(1) dictionary)
+  5. DigitalTwinStateManager.record_anomaly()
+  6. Device state transition: NORMAL → SUSPICIOUS → UNDER_ATTACK
+  7. Event recorded with timestamp, risk, prediction, confidence
+Output: Updated Digital Twin state + event history
+
+STEP 6: DIGITAL TWIN STATE MANAGEMENT (digital_twin/state.py)
+─────────────────────────────────────────────────────────────
+State Transitions (Risk-based):
+  - NORMAL (0.00-0.30) → WARNING (0.30-0.60) → SUSPICIOUS (0.60-0.80) → UNDER_ATTACK (0.80-1.00)
+  - ML-driven transitions bypass sequential rules (direct assignment)
+  - record_anomaly() is primary integration point for ML predictions
+  - Event history maintained for dashboard
+
+STEP 7: DASHBOARD VISUALIZATION (dashboard/app.py)
+──────────────────────────────────────────────────
+6 Pages:
+  1. Overview - Device counts, status distribution, recent events
+  2. Network Topology - Interactive graph with status highlighting
+  3. Device Details - Metadata, neighbors, event history
+  4. Security Events - Filterable event table
+  5. ML Performance - Metrics from evaluation_results.json + plots
+  6. Demo Controls - Run Sample Traffic, Simulate Attack, Reset Twin
+
+STEP 8: CONTROLLED ATTACK SIMULATION (digital_twin/demo.py)
+───────────────────────────────────────────────────────────
+4 Attack Types:
+  1. port_scan - Reconnaissance (risk_base=0.65)
+  2. ddos - Volumetric flood (risk_base=0.85)
+  3. brute_force - Auth attempts (risk_base=0.75)
+  4. unauthorized_access - Privilege escalation (risk_base=0.80)
+Pipeline: Synthetic telemetry → ML prediction → Digital Twin update → Event recording
+
+================================================================================
+DIGITAL TWIN ARCHITECTURE
+================================================================================
+
+DEVICE MODEL (digital_twin/devices.py)
+──────────────────────────────────────
+Device Dataclass Fields:
+  - device_id (str, unique, required)
+  - name (str)
+  - device_type (str, enum: External, Security, Router, Switch, Server, IoT, Endpoint, AccessPoint, Monitoring)
+  - ip_address (str, unique)
+  - mac_address (str, unique, deterministic fictional)
+  - location (str, physical zone)
+  - department (str)
+  - vlan (str, logical zone)
+  - status (str, enum: NORMAL, WARNING, SUSPICIOUS, UNDER_ATTACK, OFFLINE)
+  - risk_score (float, 0.0-1.0)
+  - last_seen (datetime)
+  - _event_log (private list)
+
+Validation:
+  - device_id not empty
+  - device_type in valid set
+  - status in valid set
+  - risk_score in [0.0, 1.0]
+
+State Machine (Manual Transitions):
+  NORMAL → WARNING, SUSPICIOUS, OFFLINE
+  WARNING → NORMAL, SUSPICIOUS, UNDER_ATTACK, OFFLINE
+  SUSPICIOUS → NORMAL, WARNING, UNDER_ATTACK, OFFLINE
+  UNDER_ATTACK → SUSPICIOUS, WARNING, NORMAL, OFFLINE
+  OFFLINE → NORMAL
+  (ML-driven transitions bypass these rules)
+
+CAMPUS TOPOLOGY (digital_twin/topology.py)
+──────────────────────────────────────────
+26 Devices Across 5 Physical Zones:
+
+EXTERNAL (1):
+  - EXT-01: Internet Gateway (0.0.0.0)
+
+SECURITY (2):
+  - FW-01: Perimeter Firewall (10.0.0.1)
+  - IDS-01: IDS/Monitoring Node (10.0.0.2)
+
+CORE (1):
+  - RTR-01: Core Router (192.168.0.1)
+
+SERVERS (6):
+  - SRV-LMS: LMS Server (192.168.10.10)
+  - SRV-WEB: Web Server (192.168.10.11)
+  - SRV-DB: Database Server (192.168.10.12)
+  - SRV-AUTH: Authentication Server (192.168.10.13)
+  - SRV-FILE: File Server (192.168.10.14)
+
+ACADEMIC BLOCK (7):
+  - SW-ACAD: Academic Switch (192.168.20.1)
+  - FAC-PC01: Faculty PC 01 (192.168.20.101)
+  - FAC-PC02: Faculty PC 02 (192.168.20.102)
+  - STU-PC01: Student PC 01 (192.168.20.201)
+  - CCTV-01: Academic CCTV 01 (192.168.20.10)
+  - RFID-01: RFID Attendance Reader (192.168.20.11)
+  - AP-ACAD: Academic Wi-Fi AP (192.168.20.50)
+
+ADMINISTRATION BLOCK (4):
+  - SW-ADMIN: Admin Switch (192.168.30.1)
+  - ADMIN-PC01: Admin PC 01 (192.168.30.101)
+  - ADMIN-SRV: Admin Server (192.168.30.10)
+  - ACS-01: Access Control System (192.168.30.20)
+
+HOSTEL BLOCK (6):
+  - SW-HOSTEL: Hostel Switch (192.168.40.1)
+  - STU-DEV01: Student Device 01 (192.168.40.101)
+  - STU-DEV02: Student Device 02 (192.168.40.102)
+  - AP-HOSTEL: Hostel Wi-Fi AP (192.168.40.50)
+  - IOT-HOSTEL: Hostel IoT Device (192.168.40.20)
+  - CCTV-02: Hostel CCTV (192.168.40.21)
+
+Network Connections (25 bidirectional):
+  EXT-01 → FW-01 → IDS-01 (span) → RTR-01
+  RTR-01 → 5 Servers + 3 Zone Switches
+  Each Switch → Endpoints, IoT, Access Points
+
+Logical Zones (VLANs): EXTERNAL, DMZ, MANAGEMENT, CORE, SERVERS, ACADEMIC, ADMIN, HOSTEL, IOT
+
+IP Addressing (Fictional Private Ranges):
+  - 10.0.0.0/24 → Security
+  - 192.168.0.0/24 → Core
+  - 192.168.10.0/24 → Servers
+  - 192.168.20.0/24 → Academic/IoT
+  - 192.168.30.0/24 → Admin
+  - 192.168.40.0/24 → Hostel
+
+MAC Addresses: Deterministic fictional (AA:BB:CC:DD:EE:FF pattern)
+
+Edge Metadata: bandwidth, protocol, zone, status
+
+STATE MANAGER (digital_twin/state.py)
+─────────────────────────────────────
+DigitalTwinStateManager wraps CampusTopology
+Key Methods:
+  - update_device_state(device_id, new_status, reason)
+  - update_risk_score(device_id, score, reason, auto_transition)
+  - record_anomaly(device_id, risk_score, prediction, confidence, source_ip)
+  - reset_device(device_id, reason)
+  - get_device_state(device_id)
+  - get_event_history(limit)
+  - get_compromised_devices()
+  - get_topology_summary()
+
+Risk-to-Status Mapping:
+  0.00-0.30 → NORMAL
+  0.30-0.60 → WARNING
+  0.60-0.80 → SUSPICIOUS
+  0.80-1.00 → UNDER_ATTACK
+
+================================================================================
+ML PIPELINE DETAILS
+================================================================================
+
+DATASET: CICIDS2017
+───────────────────
+Source: Canadian Institute for Cybersecurity, University of New Brunswick
+URL: https://www.unb.ca/cic/datasets/ids-2017.html
+Citation: Sharafaldin et al., 2018, ICISSP 2018
+
+Attack Categories in Dataset:
+  - BENIGN (all days)
+  - DDoS (Friday AM)
+  - PortScan (Friday Afternoon)
+  - Bot (Thursday)
+  - Web Attacks (Tuesday)
+  - Brute Force / FTP-BruteForce / SSH-Patator (Tue-Wed)
+  - DoS (Hulk, GoldenEye, slowloris, Heartbleed) (Wednesday)
+  - Infiltration (Thursday)
+
+Wednesday File Used (Auto-selected):
+  - 692,703 raw rows × 79 columns
+  - After cleaning: 584,991 rows
+  - Labels: BENIGN (440,031), DoS Hulk (231,073), DoS GoldenEye (10,293),
+    DoS slowloris (5,796), DoS Slowhttptest (5,499), Heartbleed (11)
+
+PREPROCESSING DETAILS (ml/preprocess.py)
+────────────────────────────────────────
+Constants:
+  - RAW_DIR = Path("data/raw")
+  - PROCESSED_DIR = Path("data/processed")
+  - MODELS_DIR = Path("models")
+  - RANDOM_STATE = 42
+  - TEST_SIZE = 0.2
+
+Columns Dropped (Metadata/Leakage Prevention):
+  - flow_id, source_ip, source_port, destination_ip, destination_port, timestamp
+  - src_ip, dst_ip, src_port, dst_port, protocol
+  - CICIDS2017 specific: Flow ID, Source IP, Source Port, Destination IP,
+    Destination Port, Timestamp, Protocol
+
+Label Column Candidates: Label, label, Class, class, Attack, attack, category, Category, Label_cat
+Benign Labels: benign, normal, legitimate, 0, background
+
+Pipeline Steps:
+  1. _clean_column_names() - strip whitespace
+  2. _find_label_column() - auto-detect
+  3. Drop metadata columns
+  4. Drop duplicates
+  5. _remove_bad_values() - inf/-inf → NaN → drop
+  6. _normalise_labels() - binary mapping
+  7. _select_numeric_features() - 77 features
+  8. Train/test split (stratified, BEFORE scaling)
+  9. StandardScaler fit on train only
+
+Feature Selection: All numeric columns except label (77 features)
+  Examples: Flow Duration, Total Fwd Packets, Total Backward Packets,
+  Flow Bytes/s, Flow Packets/s, Packet Length Mean/Std/Var, Flag Counts,
+  IAT statistics, Bulk statistics, Subflow statistics, Window sizes,
+  Active/Idle statistics
+
+MODEL TRAINING DETAILS (ml/train.py)
+────────────────────────────────────
+Random Forest:
+  - Class: sklearn.ensemble.RandomForestClassifier
+  - n_estimators=100, max_depth=None, class_weight="balanced"
+  - random_state=42, n_jobs=-1
+  - Trained on X_train, y_train
+  - Evaluated on X_test, y_test
+
+Isolation Forest:
+  - Class: sklearn.ensemble.IsolationForest
+  - n_estimators=100, contamination=0.1, random_state=42, n_jobs=-1
+  - Trained on X_train ONLY (no labels)
+  - Predictions mapped: -1→1 (ATTACK), 1→0 (NORMAL)
+  - Evaluated post-hoc on X_test, y_test
+
+Evaluation Metrics (_quick_eval):
+  - Accuracy, Precision, Recall, F1-Score, ROC-AUC
+  - Classification Report with target_names=["NORMAL", "ATTACK"]
+
+EVALUATION DETAILS (ml/evaluate.py)
+───────────────────────────────────
+Metrics Computed:
+  - Accuracy, Precision, Recall, F1-Score, False Positive Rate, ROC-AUC
+  - Confusion Matrix (TN, FP, FN, TP)
+  - Classification Report
+  - ROC Curve (if predict_proba available)
+
+Visualizations Saved:
+  - Confusion Matrix (Blues colormap)
+  - ROC Curve (with diagonal reference)
+
+PREDICTION & INTEGRATION (ml/predict.py)
+────────────────────────────────────────
+FlowPredictor Class:
+  - Loads: random_forest.joblib, scaler.joblib, feature_names.joblib
+  - predict_flow(flow_dict) → {prediction, label, confidence, risk_score}
+  - predict_batch(flows_df, state_manager, dst_ip_col, pre_scaled)
+    - pre_scaled=True for preprocessed test data
+    - Adds: prediction, risk_score, confidence columns
+    - Updates Digital Twin via state_manager.record_anomaly()
+
+Demo Mapping Layer:
+  - DEMO_DEVICE_IPS: 17 campus IPs for deterministic mapping
+  - get_demo_device_ip(row_index) → IP
+  - add_demo_ips(flows_df) → adds destination_ip column
+
+================================================================================
+DASHBOARD DETAILS (dashboard/app.py)
+================================================================================
+
+Streamlit Configuration:
+  - Page Title: "Digital Twin — Campus Cyber Defense"
+  - Page Icon: 🛡️
+  - Layout: Wide
+  - Initial Sidebar: Expanded
+
+Custom CSS:
+  - Dark theme (#0D1117 background)
+  - Inter font family
+  - Metric cards with gradient backgrounds
+  - Status color coding (green/yellow/orange/red)
+  - Event rows with colored left borders
+  - Demo badge: "⚠️ Controlled Simulation — No Live Network Traffic"
+
+Session State:
+  - @st.cache_resource get_digital_twin() - builds topology + state manager once
+
+Pages:
+1. OVERVIEW
+   - 5 metric cards: Total, Normal, Warning, Suspicious, Under Attack
+   - Status distribution pie chart
+   - Compromised devices list
+   - Recent events (last 8)
+
+2. NETWORK TOPOLOGY
+   - Matplotlib/NetworkX visualization
+   - Status filter dropdown
+   - Fixed positions for all 26 devices
+   - Device type shapes/colors, status border colors
+   - Zone summary with attack indicators
+
+3. DEVICE DETAILS
+   - Device selector dropdown
+   - Device info card (ID, name, type, IP, MAC, location, dept, VLAN)
+   - Current state card (status emoji, risk score, last seen, compromised)
+   - Network neighbors table
+   - Device-specific event history
+
+4. SECURITY EVENTS
+   - Full event history as filterable table
+   - Filters: Prediction, Device
+   - Columns: timestamp, device_id, device_name, prediction, confidence,
+     risk_score, previous_status, new_status, source_ip
+   - Risk score gradient highlighting
+
+5. ML PERFORMANCE
+   - Loads results/evaluation_results.json
+   - Per-model metrics cards (Accuracy, Precision, Recall, F1, ROC-AUC)
+   - Confusion matrix image
+   - ROC curve image
+   - Comparison table for multiple models
+   - Note about supervised vs unsupervised comparison
+
+6. DEMO CONTROLS
+   - Run Sample Traffic: processes CICIDS2017 test flows through RF
+   - Simulate Attack: forces targeted attack on random critical device
+   - Reset Twin: restores all devices to NORMAL
+   - Live system state summary with metrics
+   - Compromised devices list
+
+================================================================================
+CONTROLLED ATTACK SIMULATION (digital_twin/demo.py)
+================================================================================
+
+CLI Interface:
+  python -m digital_twin.demo --attack <type> --device <device_id>
+  python -m digital_twin.demo --reset
+  python -m digital_twin.demo --list-devices
+  python -m digital_twin.demo --list-attacks
+
+Attack Scenarios:
+1. port_scan
+   - Name: Port Scan
+   - Description: Simulated reconnaissance scanning multiple ports
+   - Risk Base: 0.65, Confidence Base: 0.75
+   - Traffic Pattern: Many small packets, short duration, many destinations
+
+2. ddos
+   - Name: DDoS-like Traffic Spike
+   - Description: Simulated volumetric attack flooding target
+   - Risk Base: 0.85, Confidence Base: 0.90
+   - Traffic Pattern: High packet rate, high volume
+
+3. brute_force
+   - Name: Brute Force Authentication
+   - Description: Simulated repeated login attempts
+   - Risk Base: 0.75, Confidence Base: 0.80
+   - Traffic Pattern: Repeated connections, SYN flags
+
+4. unauthorized_access
+   - Name: Unauthorized Access Attempt
+   - Description: Simulated privilege escalation
+   - Risk Base: 0.80, Confidence Base: 0.85
+   - Traffic Pattern: Anomalous protocol, PSH flags
+
+Synthetic Telemetry Generation:
+  - Loads test data (X_test) as base
+  - Modifies features per attack type:
+    - port_scan: Low packet count, short duration, high packet rate
+    - ddos: High packet count, high bytes/packets per second
+    - brute_force: Moderate packets, repeated SYN flags
+    - unauthorized_access: Moderate packets, PSH flags
+  - Adds destination_ip for target device
+
+Pipeline:
+  1. Generate synthetic flows
+  2. FlowPredictor.predict_batch(pre_scaled=True)
+  3. IP_TO_DEVICE lookup
+  4. DigitalTwinStateManager.record_anomaly()
+  4. Returns summary with attack/normal counts, risk scores, final device state
+
+Reset Function:
+  - Iterates all devices, calls mgr.reset_device() if not NORMAL
+  - Clears event history (by creating new manager)
+
+================================================================================
+TESTING
+================================================================================
+
+Test Suite: 74 tests passing
+────────────────────────────
+test_devices.py (15 tests):
+  - Device creation, validation, state transitions, risk scores, serialization
+
+test_topology.py (14 tests):
+  - Topology creation, device queries, neighbor queries, state updates, add/remove
+
+test_state.py (11 tests):
+  - Risk-to-status mapping, state manager operations, event history, reset
+
+test_preprocessing.py (16 tests):
+  - Column cleaning, label normalization, NaN/Inf handling, label detection,
+    feature selection, no-leakage split, reproducible split
+
+test_ml.py (13 tests):
+  - Training helpers, RF training, IF training, evaluation, FlowPredictor
+
+test_network.py (10 tests):
+  - Constants validation, visualization mocking, CLI testing
+
+Run: pytest (or python -m pytest -q)
+All 74 tests pass in ~2 seconds
+
+================================================================================
+EXPERIMENTAL RESULTS (ACTUAL MEASURED)
+================================================================================
+
+Dataset: CICIDS2017 Wednesday-workingHours.pcap_ISCX.csv
+  Raw: 692,703 rows → Cleaned: 584,991 rows
+  Train: 467,992 | Test: 116,999
+  Features: 77 | Classes: 2 (BENIGN=0, ATTACK=1)
+  Class Distribution (Train): BENIGN=312,987 (66.9%), ATTACK=155,005 (33.1%)
+
+Random Forest (Primary MVP Classifier):
+───────────────────────────────────────
+Configuration: n_estimators=100, class_weight=balanced, random_state=42
+
+Test Set Metrics:
+  Accuracy:     0.9991 (99.91%)
+  Precision:    0.9981
+  Recall:       0.9992
+  F1-Score:     0.9987
+  False Positive Rate: 0.0009 (0.09%)
+  ROC-AUC:      0.9999
+
+Confusion Matrix:
+  TN=78,176  FP=72
+  FN=30      TP=38,721
+
+Error Analysis:
+  - False Positives: 72 (0.09% of NORMAL traffic incorrectly flagged)
+  - False Negatives: 30 (0.08% of ATTACK traffic missed)
+  - Class imbalance handled via class_weight="balanced"
+
+Isolation Forest (Unsupervised Baseline):
+─────────────────────────────────────────
+Configuration: n_estimators=100, contamination=0.1, random_state=42
+
+Test Set Metrics:
+  Accuracy: 0.6414 (64.14%)
+  Precision: 0.3655
+  Recall: 0.1123
+  F1-Score: 0.1718
+  False Positive Rate: 0.0966 (9.66%)
+  ROC-AUC: N/A (no probability outputs)
+
+Confusion Matrix:
+  TN=70,692  FP=7,556
+  FN=34,399  TP=4,352
+
+Note: Unsupervised - metrics not directly comparable to supervised RF
+
+Reproducibility:
+  - Random seed: 42 (all stages)
+  - Train/test split: 80/20 stratified
+  - Preprocessing: Column cleanup, duplicate removal, NaN/Inf handling,
+    label normalization, numeric feature selection, StandardScaler (fit on train only)
+  - Feature count: 77
+  - Timestamp: 2026-08-26T06:50:22
+
+================================================================================
+LIMITATIONS (HONEST DISCLOSURE)
+================================================================================
+
+1. Public benchmark data only - CICIDS2017 (2017), not live campus traffic
+2. Simulated campus mapping - IP-to-device mapping is deterministic demo layer,
+   not real campus IPs
+3. No live network ingestion - operates entirely on synthetic/preprocessed data
+4. Controlled simulation - attack telemetry is feature-modified test data,
+   not real packets
+5. Benchmark generalization - near-perfect metrics on Wednesday split;
+   cross-day validation needed for production
+6. Binary classification only - BENIGN vs ATTACK; multi-class not implemented
+7. No XAI/response - SHAP/LIME, attack-path prediction, automated response
+   are Major Project scope
+8. Single dataset - only CICIDS2017 tested; UNSW-NB15 code exists but untested
+8. Demo mapping is synthetic - IP-to-device mapping is for demonstration only
+
+================================================================================
+MINOR vs MAJOR PROJECT SCOPE
+================================================================================
+
+MINOR PROJECT (IMPLEMENTED ✅)
+──────────────────────────────
+- Campus Digital Twin (26 devices, 5 zones)
+- Device data model with state machine
+- Graph-based topology (NetworkX)
+- Dataset preprocessing pipeline (CICIDS2017)
+- Random Forest (supervised) - 99.91% accuracy
+- Isolation Forest (unsupervised) - unsupervised baseline
+- Binary classification (NORMAL vs ATTACK)
+- Digital Twin + ML integration
+- Streamlit monitoring dashboard (6 pages)
+- Controlled cyberattack simulation (4 attack types)
+- 74 automated tests
+- Complete documentation
+
+MAJOR PROJECT (PLANNED 🔄)
+────────────────────────────
+- SHAP / LIME explainability
+- Predictive attack-path forecasting
+- Threat propagation modeling
+- Advanced risk scoring
+- Automated incident response
+- Real-time campus data ingestion
+- Multi-class attack classification
+
+================================================================================
+HOW TO RUN - COMPLETE COMMANDS
+================================================================================
+
+PREREQUISITES:
+──────────────
+cd /home/abhishek/digitaltwin-mp
+python3 -m venv denv
+source denv/bin/activate
+pip install -r requirements.txt
+
+DATASET SETUP:
+──────────────
+# Already present in data/raw/ (8 CICIDS2017 files)
+ls data/raw/
+
+FULL PIPELINE:
+──────────────
+# 1. Preprocess
+python -m ml.preprocess
+
+# 2. Train
+python -m ml.train
+
+# 3. Evaluate
+python -m ml.evaluate
+
+DIGITAL TWIN:
+─────────────
+python -m digital_twin.network
+
+DASHBOARD:
+──────────
+streamlit run dashboard/app.py
+# Opens at http://localhost:8501
+
+ATTACK SIMULATIONS:
+──────────────────
+python -m digital_twin.demo --reset
+python -m digital_twin.demo --attack port_scan --device CCTV-01
+python -m digital_twin.demo --attack ddos --device SRV-WEB
+python -m digital_twin.demo --attack brute_force --device SRV-AUTH
+python -m digital_twin.demo --attack unauthorized_access --device ADMIN-SRV
+
+TESTS:
+──────
+pytest
+# 74 tests passing
+
+================================================================================
+FILES CHANGED IN MVP IMPLEMENTATION
+================================================================================
+
+Modified:
+  - README.md (updated MVP status, dashboard pages, demo commands, Minor/Major scope)
+  - dashboard/app.py (added Device Details page, Demo Controls page, simulation badge)
+  - docs/experiments.md (complete experimental log with actual metrics)
+  - ml/predict.py (added pre_scaled parameter for correct inference)
+  - tests/test_ml.py (new: 13 tests for training/evaluation/FlowPredictor)
+  - tests/test_network.py (new: 10 tests for visualization constants and CLI)
+
+Created:
+  - digital_twin/demo.py (Controlled simulation CLI with 4 attack types)
+
+================================================================================
+GIT STATUS
+================================================================================
+
+Commit: 31854c8 "feat: complete end-to-end cybersecurity digital twin MVP"
+Files Changed: 7 files, 1182 insertions(+), 131 deletions(-)
+New File: digital_twin/demo.py
+Tests: 74 passing
+Working Tree: Clean (committed)
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

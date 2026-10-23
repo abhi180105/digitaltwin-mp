@@ -1,0 +1,123 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+
+title Data Flow Pipeline - AI-Driven Digital Twin Framework
+
+' External
+[CICIDS2017 CSV Files\n(8 files in data/raw/)] as RawData
+
+' Data Layer
+database "data/raw/" as RawDir
+database "data/processed/" as ProcessedDir
+database "models/" as ModelsDir
+database "results/" as ResultsDir
+
+' ML Pipeline
+[ml/preprocess.py\nPreprocessing Pipeline] as Preprocess
+[ml/train.py\nModel Training] as Train
+[ml/evaluate.py\nModel Evaluation] as Evaluate
+[ml/predict.py\nFlowPredictor] as Predict
+
+' Digital Twin Layer
+[digital_twin/topology.py\nCampusTopology] as Topology
+[digital_twin/state.py\nDigitalTwinStateManager] as StateManager
+[digital_twin/devices.py\nDevice Model] as DeviceModel
+[digital_twin/demo.py\nAttack Simulation] as Demo
+
+' Dashboard Layer
+[dashboard/app.py\nStreamlit Dashboard] as Dashboard
+
+' Data Flow Connections
+RawData --> RawDir : Place CSV files
+RawDir --> Preprocess : Load raw CSV
+Preprocess --> ProcessedDir : Save X_train, X_test, y_train, y_test
+Preprocess --> ModelsDir : Save scaler.joblib, feature_names.joblib
+
+ProcessedDir --> Train : Load train/test splits
+ModelsDir --> Train : Load scaler, feature names
+Train --> ModelsDir : Save random_forest.joblib, isolation_forest.joblib
+Train --> ModelsDir : Save training_results.json
+
+ModelsDir --> Evaluate : Load trained models
+ProcessedDir --> Evaluate : Load test data
+Evaluate --> ResultsDir : Save evaluation_results.json, confusion matrices, ROC curves
+
+ModelsDir --> Predict : Load model, scaler, features
+ProcessedDir --> Predict : Load test data (pre-scaled)
+Predict --> StateManager : record_anomaly() per flow
+StateManager --> Topology : Update device states
+StateManager --> DeviceModel : Update device risk/status
+
+StateManager --> Demo : Simulate attacks
+Demo --> Predict : Generate synthetic flows -> predict
+Predict --> StateManager : Update device states
+
+StateManager --> Dashboard : get_topology_summary()\nget_event_history()\nget_compromised_devices()
+Topology --> Dashboard : get_device(), get_neighbors()\nbuild_topology_figure()
+ResultsDir --> Dashboard : Load evaluation_results.json\nLoad confusion matrix/ROC images
+
+' Notes
+note right of RawData
+  8 CICIDS2017 CSV files
+  Monday-Friday, various attacks
+  Auto-detected or manual selection
+end note
+
+note right of Preprocess
+  1. Column cleanup
+  2. Label detection
+  3. Drop metadata (IP, port, timestamp)
+  4. Remove duplicates
+  5. NaN/Inf handling
+  6. Binary label normalization
+  7. Feature selection (77 numeric)
+  8. Train/test split (80/20, stratified)
+  9. StandardScaler (fit on train only)
+end note
+
+note right of Train
+  Random Forest (Supervised)
+  - n_estimators=100
+  - class_weight=balanced
+  - random_state=42
+  
+  Isolation Forest (Unsupervised)
+  - n_estimators=100
+  - contamination=0.1
+  - random_state=42
+end note
+
+note right of Predict
+  FlowPredictor
+  - Loads model, scaler, features
+  - predict_flow() - single flow
+  - predict_batch() - batch with DT integration
+  - pre_scaled=True for test data
+  - Returns: prediction, risk_score, confidence
+end note
+
+note right of StateManager
+  DigitalTwinStateManager
+  - record_anomaly() - ML integration point
+  - update_risk_score() - auto transition
+  - update_device_state() - manual
+  - reset_device() - reset to NORMAL
+  - get_event_history() - for dashboard
+  - get_compromised_devices()
+end note
+
+note right of Dashboard
+  6 Pages:
+  1. Overview - metrics, pie chart, events
+  2. Network Topology - interactive graph
+  3. Device Details - metadata, neighbors, events
+  4. Security Events - filterable table
+  5. ML Performance - metrics + plots
+  6. Demo Controls - simulation buttons
+end note
+
+@enduml

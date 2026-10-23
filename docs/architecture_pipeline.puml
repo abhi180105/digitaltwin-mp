@@ -1,0 +1,130 @@
+@startuml
+!define RECTANGLE class
+
+' ============================================================
+' HIGH-LEVEL PIPELINE (Data Flow)
+' ============================================================
+
+title AI-Driven Digital Twin Framework - Pipeline Architecture
+
+skinparam backgroundColor #0D1117
+skinparam componentStyle rectangle
+skinparam rectangle {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 12
+}
+skinparam package {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    FontSize 13
+}
+skinparam arrow {
+    Color #60A5FA
+    FontColor #94A3B8
+}
+skinparam note {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #94A3B8
+}
+
+package "DATA LAYER" as DataLayer #1E293B {
+    [CICIDS2017 / UNSW-NB15\nCSV Datasets] as RawData
+    [data/raw/] as RawDir
+    [data/processed/\nX_train, X_test, y_train, y_test] as ProcessedDir
+    [models/\nscaler.joblib, feature_names.joblib] as ModelArtifacts
+}
+
+package "PREPROCESSING PIPELINE" as PreprocessLayer #1E293B {
+    [ml/preprocess.py\nPreprocessPipeline] as Preprocess
+    note right of Preprocess
+        1. Column name cleanup
+        2. Label column detection
+        3. Drop metadata (IP, port, timestamp)
+        4. Remove duplicates
+        5. Handle inf/NaN
+        6. Binary label normalization (BENIGN→0, ATTACK→1)
+        7. Numeric feature selection
+        8. Train/test split (80/20, stratified)
+        9. StandardScaler (fit on train only)
+    end note
+}
+
+package "ML LAYER" as MLLayer #1E293B {
+    [ml/train.py\nRandomForestClassifier] as RF
+    [ml/train.py\nIsolationForest] as ISO
+    [ml/evaluate.py\nModelEvaluator] as Eval
+    [models/\nrandom_forest.joblib] as RFModel
+    [models/\nisolation_forest.joblib] as ISOModel
+    [results/\nevaluation_results.json] as EvalResults
+    [results/\n*_confusion_matrix.png] as CMPlots
+    [results/\n*_roc_curve.png] as ROCPlots
+}
+
+package "DIGITAL TWIN LAYER" as DTLayer #1E293B {
+    [digital_twin/devices.py\nDevice Dataclass] as Device
+    [digital_twin/topology.py\nCampusTopology (NetworkX DiGraph)] as Topology
+    [digital_twin/state.py\nDigitalTwinStateManager] as StateMgr
+    [digital_twin/network.py\nVisualization] as Viz
+    [models/topology.png] as TopoPNG
+}
+
+package "ML INTEGRATION" as IntegrationLayer #1E293B {
+    [ml/predict.py\nFlowPredictor] as Predictor
+    [digital_twin/topology.py\nIP_TO_DEVICE mapping] as IPMap
+}
+
+package "DASHBOARD LAYER" as DashboardLayer #1E293B {
+    [dashboard/app.py\nStreamlit App] as Dashboard
+    [Overview Page] as Overview
+    [Network Topology Page] as TopoPage
+    [Device Inventory Page] as DevicePage
+    [Threat Events Page] as ThreatPage
+    [Model Performance Page] as PerfPage
+}
+
+' ============================================================
+' DATA FLOW CONNECTIONS
+' ============================================================
+
+RawData --> RawDir : "placed in"
+RawDir --> Preprocess : "load_raw_dataset()"
+Preprocess --> ProcessedDir : "save_processed()"
+Preprocess --> ModelArtifacts : "save scaler + features"
+ProcessedDir --> RF : "load_processed()"
+ProcessedDir --> ISO : "load_processed()"
+RF --> RFModel : "joblib.dump()"
+ISO --> ISOModel : "joblib.dump()"
+RFModel --> Eval : "_load_model()"
+ISOModel --> Eval : "_load_model()"
+ProcessedDir --> Eval : "load_processed()"
+Eval --> EvalResults : "json.dump()"
+Eval --> CMPlots : "ConfusionMatrixDisplay"
+Eval --> ROCPlots : "roc_curve()"
+
+' ML Integration
+RFModel --> Predictor : "joblib.load()"
+ModelArtifacts --> Predictor : "load scaler + features"
+Predictor --> IPMap : "destination_ip → device_id"
+IPMap --> StateMgr : "record_anomaly()"
+StateMgr --> Topology : "update device status/risk"
+StateMgr --> Dashboard : "get_event_history()\nget_topology_summary()\nget_compromised_devices()"
+
+' Digital Twin
+Device --> Topology : "add_device()"
+Topology --> Viz : "create_campus_topology()"
+Viz --> TopoPNG : "visualize_topology()"
+Topology --> Dashboard : "create_campus_topology()"
+StateMgr --> Dashboard : "get_digital_twin()"
+
+' Dashboard data flow
+Dashboard --> Overview : "status counts, pie chart"
+Dashboard --> TopoPage : "build_topology_figure()"
+Dashboard --> DevicePage : "device table with risk gradient"
+Dashboard --> ThreatPage : "event history with filters"
+Dashboard --> PerfPage : "load_model_results()"
+
+@enduml

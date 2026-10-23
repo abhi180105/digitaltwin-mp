@@ -1,0 +1,96 @@
+@startuml
+title End-to-End Pipeline Sequence
+
+skinparam backgroundColor #0D1117
+skinparam sequence {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+    ActorBackgroundColor #1E293B
+    ActorBorderColor #334155
+    ActorFontColor #F8FAFC
+    LifeLineBackgroundColor #334155
+    LifeLineBorderColor #60A5FA
+}
+skinparam note {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #94A3B8
+}
+
+actor User
+participant "data/raw/\nDataset.csv" as RawData
+participant "ml/preprocess.py\nPreprocessPipeline" as Preprocess
+participant "data/processed/\nTrain/Test splits" as Processed
+participant "ml/train.py\nRandomForest + IsolationForest" as Train
+participant "models/\n*.joblib" as Models
+participant "ml/evaluate.py\nModelEvaluator" as Evaluate
+participant "results/\nmetrics + plots" as Results
+participant "ml/predict.py\nFlowPredictor" as Predictor
+participant "digital_twin/topology.py\nIP_TO_DEVICE" as IPMap
+participant "digital_twin/state.py\nDigitalTwinStateManager" as StateMgr
+participant "digital_twin/topology.py\nCampusTopology" as Topology
+participant "dashboard/app.py\nStreamlit Dashboard" as Dashboard
+
+== Phase 1: Data Preparation ==
+User -> RawData: Place CICIDS2017/UNSW-NB15 CSV
+User -> Preprocess: python -m ml.preprocess
+Preprocess -> RawData: load_raw_dataset()
+Preprocess -> Preprocess: Clean columns, normalize labels,\nremove inf/NaN, drop metadata,\nselect numeric features
+Preprocess -> Preprocess: Train/test split (stratified)
+Preprocess -> Preprocess: Fit StandardScaler on train only
+Preprocess -> Processed: Save X_train, X_test, y_train, y_test
+Preprocess -> Models: Save scaler.joblib, feature_names.joblib
+
+== Phase 2: Model Training ==
+User -> Train: python -m ml.train
+Train -> Processed: load_processed()
+Train -> Train: Train RandomForest (supervised)
+Train -> Train: Train IsolationForest (unsupervised)
+Train -> Models: Save random_forest.joblib
+Train -> Models: Save isolation_forest.joblib
+Train -> Models: Save training_results.json
+
+== Phase 3: Model Evaluation ==
+User -> Evaluate: python -m ml.evaluate
+Evaluate -> Models: Load models
+Evaluate -> Processed: Load test set
+Evaluate -> Evaluate: Compute metrics (Acc, Prec, Rec, F1, AUC, FPR)
+Evaluate -> Evaluate: Generate confusion matrices
+Evaluate -> Evaluate: Generate ROC curves (RF only)
+Evaluate -> Results: Save evaluation_results.json
+Evaluate -> Results: Save *_confusion_matrix.png
+Evaluate -> Results: Save *_roc_curve.png
+
+== Phase 4: Digital Twin Initialization ==
+User -> Topology: python -m digital_twin.network
+Topology -> Topology: create_campus_topology()\n26 devices, 25 connections
+Topology -> Topology: visualize_topology() → models/topology.png
+Topology -> StateMgr: DigitalTwinStateManager(topo)
+StateMgr -> StateMgr: Inject demo events (optional)
+
+== Phase 5: Real-time Inference & Monitoring ==
+loop Continuous Monitoring
+    User -> Predictor: FlowPredictor(model, scaler, features)
+    Predictor -> Models: Load RF model + scaler + features
+    
+    alt Batch prediction from dataset
+        Predictor -> Predictor: predict_batch(flows_df)
+        Predictor -> IPMap: Map destination_ip → device_id
+        Predictor -> StateMgr: record_anomaly(device_id, risk, pred, conf)
+        StateMgr -> Topology: Update device status + risk_score
+        StateMgr -> StateMgr: Append to event_history
+    else Single flow prediction
+        Predictor -> Predictor: predict_flow(flow_dict)
+        Predictor --> User: {prediction, confidence, risk_score}
+    end
+    
+    Dashboard -> StateMgr: get_topology_summary()
+    Dashboard -> StateMgr: get_event_history()
+    Dashboard -> StateMgr: get_compromised_devices()
+    Dashboard -> Topology: create_campus_topology()
+    Dashboard -> Dashboard: Render pages (Overview, Topology,\nDevice Inventory, Threats, Performance)
+    Dashboard --> User: http://localhost:8501
+end
+
+@enduml

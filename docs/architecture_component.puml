@@ -1,0 +1,127 @@
+@startuml architecture_component
+title Component Diagram - Code Structure
+
+skinparam backgroundColor #0D1117
+skinparam componentStyle rectangle
+skinparam component {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+skinparam package {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+skinparam interface {
+    BackgroundColor #1E293B
+    BorderColor #334155
+    FontColor #F8FAFC
+}
+
+package "digital_twin" {
+    [devices.py\nDevice Dataclass] as Devices
+    [topology.py\nCampusTopology] as Topology
+    [state.py\nDigitalTwinStateManager] as State
+    [network.py\nVisualization + CLI] as Network
+    [__init__.py] as DTInit
+}
+
+package "ml" {
+    [preprocess.py\nPreprocessPipeline] as Preprocess
+    [train.py\nModelTraining] as Train
+    [evaluate.py\nModelEvaluation] as Evaluate
+    [predict.py\nFlowPredictor] as Predict
+    [__init__.py] as MLInit
+}
+
+package "dashboard" {
+    [app.py\nStreamlitApp] as App
+    [__init__.py] as DashInit
+}
+
+package "tests" {
+    [test_devices.py] as TestDev
+    [test_topology.py] as TestTopo
+    [test_state.py] as TestState
+    [test_preprocessing.py] as TestPrep
+    [test_ml.py] as TestML
+    [test_network.py] as TestNet
+}
+
+package "data" {
+    [raw/] as RawData
+    [processed/] as ProcData
+}
+
+package "models" {
+    [*.joblib] as ModelFiles
+    [training_results.json] as TrainResults
+}
+
+package "results" {
+    [evaluation_results.json] as EvalResults
+    [*_confusion_matrix.png] as CMFiles
+    [*_roc_curve.png] as ROCFiles
+}
+
+package "notebooks" {
+    [01_dataset_exploration.ipynb] as NB1
+    [02_model_training.ipynb] as NB2
+    [03_evaluation.ipynb] as NB3
+}
+
+package "docs" {
+    [architecture.md] as DocArch
+    [methodology.md] as DocMeth
+    [implementation.md] as DocImpl
+    [dataset.md] as DocData
+    [experiments.md] as DocExp
+    [architecture_pipeline.puml] as DocPUML1
+    [architecture_network.puml] as DocPUML2
+    [architecture_state.puml] as DocPUML3
+    [architecture_sequence.puml] as DocPUML4
+    [architecture_component.puml] as DocPUML5
+}
+
+' Dependencies
+Network --> Topology : uses
+Network --> State : uses
+Network --> Devices : uses
+
+Topology --> Devices : creates Device objects
+State --> Topology : wraps CampusTopology
+
+Preprocess --> RawData : reads from
+Preprocess --> ProcData : writes to
+Preprocess --> ModelFiles : writes scaler + features
+
+Train --> ProcData : reads from
+Train --> ModelFiles : writes models + training_results
+
+Evaluate --> ProcData : reads test set
+Evaluate --> ModelFiles : reads models
+Evaluate --> Results : writes metrics + plots
+
+Predict --> ModelFiles : reads RF model + scaler + features
+Predict --> Topology : uses IP_TO_DEVICE mapping
+Predict --> State : calls record_anomaly()
+
+App --> Topology : creates campus topology
+App --> State : gets DigitalTwinStateManager
+App --> Results : loads evaluation results
+
+TestDev --> Devices : tests
+TestTopo --> Topology : tests
+TestState --> State : tests
+TestPrep --> Preprocess : tests
+TestML --> Train : tests
+TestML --> Evaluate : tests
+TestML --> Predict : tests
+TestNet --> Network : tests
+
+NB1 --> RawData : explores
+NB2 --> Train : demonstrates
+NB3 --> Evaluate : demonstrates
+
+@enduml
